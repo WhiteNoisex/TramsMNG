@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tram Management - Explore</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="navbar">
+    <h1>Melbourne Tram Explorer</h1>
+    <div class="nav-links">
+        <a href="#">Home</a>
+        <a href="#">Search</a>
+        <a href="#">Reports</a>
+        <a href="#" id="loginBtn">Login</a>
+    </div>
+    </div>
+
+  <!-- Main Layout -->
+  <div class="main-layout">
+    <!-- Header -->
+    <header class="header">
+      <h1>Melbourne Tram Explorer</h1>
+      <div class="filters">
+        <input type="text" id="searchInput" placeholder="Search by name or keyword...">
+        <input type="text" id="idFilter" placeholder="ID">
+        <input type="date" id="dateFilter" placeholder="Date">
+        <input type="text" id="typeFilter" placeholder="Type">
+        <input type="text" id="periodFilter" placeholder="Operating Period">
+        <select id="statusFilter">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="retired">Retired</option>
+          <option value="decommissioned">Decommissioned</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="content" id="tramGrid"></main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>&copy; 2025 Tram Management System</p>
+    </footer>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal" id="loginModal">
+    <div class="modal-content">
+      <span class="close" id="closeLogin">&times;</span>
+      <h2>Login</h2>
+      <form>
+        <input type="text" placeholder="Username" required>
+        <input type="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="../js/script.js"></script>
+</body>
+</html>

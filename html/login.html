@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign in – Tram Management System</title>
+  <link href="https://fonts.googleapis.com/css?family=Segoe+UI:400,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/login_style.css"/>
+</head>
+<body>
+  <div class="login-bg"></div>
+  <div class="login-logo-area">
+    <!-- Replace with your actual SVG or <img> if you have a logo -->
+    <span class="login-logo-icon"></span>
+    <span class="login-logo-text"><b>Tram</b>ID</span>
+  </div>
+  <div class="login-card skew-card">
+    <h1>Sign in</h1>
+    <form class="login-form" id="loginForm">
+      <label for="username">Username</label>
+      <input type="text" id="username" required autocomplete="username" />
+      <label for="password">Password</label>
+      <input type="password" id="password" required autocomplete="current-password" />
+      <div class="login-extra">
+        <label class="login-keep"><input type="checkbox" id="keepSignedIn"> Keep me signed in</label>
+      </div>
+      <button type="submit">Sign in</button>
+      <div class="login-error" id="loginError"></div>
+    </form>
+    <div class="login-links">
+      <a href="#">Forgot your password?</a><br>
+      <span>Don’t have a TramID? <a href="#">Sign up</a></span>
+    </div>
+    <div class="login-policy">
+      <a href="#">Privacy policy <span style="font-size:0.9em;">&#8599;</span></a>
+    </div>
+  </div>
+  <script src="js/login.js"></script>
+</body>
+</html>
