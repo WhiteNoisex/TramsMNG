@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel - Tram Management</title>
+  <link rel="stylesheet" href="css/admin_style.css">
+</head>
+<body>
+  <header>
+    <div class="logo">🚋 TramMNG</div>
+    <nav class="top-nav">
+      <a href="tram-sorting.html">Tram Sorting</a>
+      <a href="maintenance.html">Maintenance</a>
+      <a href="user-management.html">User Management</a>
+      <a class="active" href="admin.html">Admin Panel</a>
+    </nav>
+  </header>
+
+  <main class="content">
+    <h1>👑 Admin Management Panel</h1>
+
+    <section>
+      <h2>User List</h2>
+      <button onclick="fetchUsers()">🔄 Refresh</button>
+      <table id="userTable" border="1" cellpadding="6">
+        <thead>
+          <tr>
+            <th>ID</th><th>UID</th><th>First</th><th>Last</th><th>Perms</th>
+            <th>Logged In</th><th>Fired</th><th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Add New User</h2>
+      <form onsubmit="addUser(event)">
+        <input placeholder="First Name" id="newFirst" required>
+        <input placeholder="Last Name" id="newLast" required>
+        <select id="newPerms">
+          <option value="Admin">Admin</option>
+          <option value="Maintenance">Maintenance</option>
+          <option value="Viewer">Viewer</option>
+        </select>
+        <input placeholder="Password" id="newPass" required>
+        <button type="submit">➕ Add</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    async function fetchUsers() {
+      const res = await fetch('/api/admin/get-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Username: sessionStorage.getItem('username'),
+          Token: sessionStorage.getItem('token')
+        })
+      });
+      const data = await res.json();
+      const tbody = document.querySelector('#userTable tbody');
+      tbody.innerHTML = '';
+
+      data.forEach(u => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${u.id}</td>
+            <td>${u.UserUID}</td>
+            <td><input value="${u.FirstName}" onchange="updateUser(${u.id}, 'FirstName', this.value)"></td>
+            <td><input value="${u.LastName}" onchange="updateUser(${u.id}, 'LastName', this.value)"></td>
+            <td>
+              <select onchange="updateUser(${u.id}, 'Perms', this.value)">
+                <option value="Admin" ${u.Perms == 'Admin' ? 'selected' : ''}>Admin</option>
+                <option value="Maintenance" ${u.Perms == 'Maintenance' ? 'selected' : ''}>Maintenance</option>
+                <option value="Viewer" ${u.Perms == 'Viewer' ? 'selected' : ''}>Viewer</option>
+              </select>
+            </td>
+            <td>${u.loggedin ? "✅" : "❌"}</td>
+            <td>${u.Fired ? "🔥 Fired" : "Active"}</td>
+            <td>${u.last_login}</td>
+            <td>
+              <button onclick="resetToken(${u.id})">🔑 Reset Token</button>
+              <button onclick="toggleFired(${u.id}, ${u.Fired})">${u.Fired ? "Rehire" : "Fire"}</button>
+              <button onclick="deleteUser(${u.id})">❌ Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function updateUser(id, field, value) {
+      await fetch('/api/admin/update-user.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, field, value })
+      });
+    }
+
+    async function resetToken(id) {
+      await fetch('/api/admin/reset-token.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      alert("🔑 Token Reset!");
+    }
+
+    async function toggleFired(id, current) {
+      await updateUser(id, 'Fired', current ? 0 : 1);
+      fetchUsers();
+    }
+
+    async function deleteUser(id) {
+      await fetch('/api/admin/delete-user.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      fetchUsers();
+    }
+
+    async function addUser(e) {
+      e.preventDefault();
+      const body = {
+        FirstName: document.getElementById('newFirst').value,
+        LastName: document.getElementById('newLast').value,
+        Perms: document.getElementById('newPerms').value,
+        Password: document.getElementById('newPass').value
+      };
+      await fetch('/api/CreateAC_API_hjkhUYIGH75.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      fetchUsers();
+    }
+
+    // Load on open
+    fetchUsers();
+  </script>
+</body>
+</html>

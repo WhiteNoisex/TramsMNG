@@ -308,6 +308,32 @@ function openModal(tramID) {
   }
 
 
+  let currentTram = null;
+
+function openHistoryPopup(tram) {
+  currentTram = tram;
+  loadTab("Servicing_History");
+  document.getElementById("historyPopup").style.display = "block";
+}
+
+function loadTab(tabName) {
+  const content = currentTram[tabName];
+  const container = document.getElementById("historyContent");
+
+  if (!content || content.length === 0) {
+    container.innerHTML = `<p>No ${tabName.replace("_", " ")} available.</p>`;
+    return;
+  }
+
+  let html = `<h3>${tabName.replace("_", " ")}</h3><ul>`;
+  content.forEach((entry, i) => {
+    html += `<li><strong>Entry ${i + 1}:</strong><pre>${JSON.stringify(entry, null, 2)}</pre></li>`;
+  });
+  html += `</ul>`;
+  container.innerHTML = html;
+}
+
+
   document.getElementById('modal_id').innerText = tram.id;
   document.getElementById('modal_name').innerText = tram.name;
   document.getElementById('modal_start_year').innerText = tram.operating_start;

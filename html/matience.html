@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Maintenance Panel - TramMNG</title>
+  <link rel="stylesheet" href="css/admin_style.css">
+</head>
+<body>
+  <header>
+    <div class="logo">🚋 TramMNG</div>
+    <nav class="top-nav">
+      <a href="tram-sorting.html">Tram Sorting</a>
+      <a class="active" href="maintenance.html">Maintenance</a>
+      <a href="user-management.html">User Management</a>
+      <a href="admin.html">Admin Panel</a>
+    </nav>
+  </header>
+
+  <main class="content">
+    <h1>Maintenance Panel</h1>
+    <section>
+      <p>Welcome, Maintenance Personnel. Use the buttons below to view tram service data.</p>
+      <div class="admin-actions">
+        <button onclick="fetchReports('damage')">🛑 Damage Reports</button>
+        <button onclick="fetchReports('service')">🔧 Service History</button>
+        <button onclick="fetchReports('maintenance')">🧰 Maintenance Logs</button>
+      </div>
+      <div id="maintenance-output" class="output-area">Select a report to begin.</div>
+    </section>
+  </main>
+
+  <script src="main.js"></script>
+  <script>
+    async function fetchReports(type) {
+      const endpointMap = {
+        damage: "/api/maintenance/get-damage-history",
+        service: "/api/maintenance/get-service-history",
+        maintenance: "/api/maintenance/get-maintenance-records"
+      };
+
+      const response = await fetch(endpointMap[type], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Username: sessionStorage.getItem('username'),
+          Token: sessionStorage.getItem('token')
+        })
+      });
+
+      const data = await response.json();
+      const output = document.getElementById("maintenance-output");
+
+      if (data.error) {
+        output.innerHTML = `<p class="error">❌ ${data.error}</p>`;
+      } else if (Array.isArray(data) && data.length === 0) {
+        output.innerHTML = "<p>✅ No records found for this category.</p>";
+      } else {
+        output.innerHTML = `<h3>📄 ${type.charAt(0).toUpperCase() + type.slice(1)} Data:</h3><pre>` + JSON.stringify(data, null, 2) + "</pre>";
+      }
+    }
+  </script>
+</body>
+</html>

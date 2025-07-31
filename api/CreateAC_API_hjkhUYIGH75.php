@@ -44,27 +44,40 @@ $requestData = array_map(function($value) {
 }, $requestData);
 
 // Check if the required POST parameters are set
-if (isset($requestData['Username']) && isset($requestData['Token']) && isset($requestData['NewUserName'])) {
+if (isset($requestData['USERUID']) && isset($requestData['Token']) && isset($requestData['NewFirstName'])  && isset($requestData['NewLastName']) && isset($requestData["Perms"])) {
     // Extract username and password from POST parameters
-    $username = $requestData['Username'];
-    $newUsername = $requestData['NewUserName'];
+    $userUID = $requestData['USERUID'];
+    $newFirstName = $requestData['NewFirstNameName'];
+    $newLastName = $requestData['NewLastNameName'];
     $token = $requestData['Token'];
+    $perms = $requestData['Perms'];
     
-    $userUID = GetUserUID($conn,$username);
+    //$userUID = GetUserUID($conn,$username);
     $timestamp = date("Y-m-d H:i:s");
 
-    if (strlen($newUsername) > 15) {
+    if (strlen($newFirstName) > 10) {
         echo json_encode(['Error' => 'Invalid Username Length']);
         http_response_code(400); // Bad Request
         exit();
     }
 
-    if (strlen($newUsername) < 5) {
+    if (strlen($newFirstName) < 1) {
         echo json_encode(['Error' => 'User Length Length']);
         http_response_code(400); // Bad Request
         exit();
     }
 
+    if (strlen($newLastName) > 10) {
+        echo json_encode(['Error' => 'Invalid Username Length']);
+        http_response_code(400); // Bad Request
+        exit();
+    }
+
+    if (strlen($newLastName) < 1) {
+        echo json_encode(['Error' => 'User Length Length']);
+        http_response_code(400); // Bad Request
+        exit();
+    }
 
     if($userUID === false){
         echo json_encode(['Error' => 'Invalid UserUID']);
@@ -72,10 +85,16 @@ if (isset($requestData['Username']) && isset($requestData['Token']) && isset($re
         exit();
     }
 
-    // Check if the credentials are correct (replace with your authentication logic)
-    if (authenticateUser($conn,$username,$token)) {
+    if($perms !== 'Admin' || $perms !== 'Mant' || $perms !== 'Normal' ){
+        echo json_encode(['Error' => 'Invalid Perms']);
+        http_response_code(400); // Bad Request
+        exit();
+    }
 
-        if(CheckUsernameAllreadyExists($conn,$newUsername)){
+    // Check if the credentials are correct (replace with your authentication logic)
+    if (authenticateUser($conn,$userUID,$token)) {
+
+        if(CheckUsernameAllreadyExists($conn,$newFirstName, $newLastName)){
             http_response_code(409); // Unauthorized
             echo json_encode(['Error' => 'Username Conflict']);
             exit();
@@ -100,7 +119,7 @@ if (isset($requestData['Username']) && isset($requestData['Token']) && isset($re
 
 
 
-        if(CreateNewAccount($conn,$newUserUID,$newUsername)){
+        if(CreateNewAccount($conn,$newUserUID,$newFirstName, $newLastName, $perms)){
             http_response_code(200); // Unauthorized
             echo json_encode(['message' => 'User Created']);
         }
@@ -124,9 +143,9 @@ if (isset($requestData['Username']) && isset($requestData['Token']) && isset($re
 
 
 
-function authenticateUser($mysqliUsers, $username, $token) {
+function authenticateUser($mysqliUsers, $userUID, $token) {
     // Prepare the SQL statement with placeholders
-    $sql = "SELECT * FROM users WHERE BINARY username = ? AND BINARY token = ? AND loggedin = 1";
+    $sql = "SELECT * FROM users WHERE BINARY UserUID = ? AND BINARY token = ? AND loggedin = 1 AND Perms = 'Admin'";
     
     // Prepare the statement
     $stmt = $mysqliUsers->prepare($sql);
@@ -139,7 +158,7 @@ function authenticateUser($mysqliUsers, $username, $token) {
     }
     
     // Bind parameters
-    $bindResult = $stmt->bind_param("ss", $username, $token);
+    $bindResult = $stmt->bind_param("ss", $userUID, $token);
     
     // Check if the parameter binding was successful
     if (!$bindResult) {
@@ -181,9 +200,9 @@ function authenticateUser($mysqliUsers, $username, $token) {
     }
 }
 
-function CheckUsernameAllreadyExists($mysqliUsers, $username) {
+function CheckUsernameAllreadyExists($mysqliUsers, $newFirstName, $newLastName) {
     // Prepare the SQL statement with placeholders
-    $sql = "SELECT * FROM users WHERE username = ?";
+    $sql = "SELECT * FROM users WHERE firstname = ? AND lastname = ?";
     
     // Prepare the statement
     $stmt = $mysqliUsers->prepare($sql);
@@ -196,7 +215,7 @@ function CheckUsernameAllreadyExists($mysqliUsers, $username) {
     }
     
     // Bind parameters
-    $bindResult = $stmt->bind_param("s", $username);
+    $bindResult = $stmt->bind_param("ss", $newFirstName, $newLastName);
     
     // Check if the parameter binding was successful
     if (!$bindResult) {
@@ -297,9 +316,9 @@ function CheckUserUIDAllreadyExists($mysqliUsers, $newuserUID) {
 
 
 
-function CreateNewAccount($mysqliUsers,$NewUserUID,$newUsername){
+function CreateNewAccount($mysqliUsers,$NewUserUID,$newFirstName, $newLastName, $newPerms){
     // Prepare the SQL statement with placeholders
-    $sql = "INSERT INTO `users` (`id`, `UserUID`, `Username`, `Password`, `token`, `loggedin`, `last_login`, `Friends`) VALUES (NULL, ?, ?, 'ChangeMe', '0', '0', CURRENT_TIMESTAMP, 'null');";
+    $sql = "INSERT INTO `users` (`id`, `UserUID`, `FirstName`,`LastName`,`Perms`, `Password`, `token`, `loggedin`, `last_login`, `Fired`) VALUES (NULL, ?, ?, ?, ?,'ChangeMe', '0', '0', CURRENT_TIMESTAMP, `0`);";
 
     // Prepare the statement
     $stmt = $mysqliUsers->prepare($sql);
@@ -312,7 +331,7 @@ function CreateNewAccount($mysqliUsers,$NewUserUID,$newUsername){
     }
     
     // Bind parameters
-    $bindResult = $stmt->bind_param("ss", $NewUserUID,$newUsername);
+    $bindResult = $stmt->bind_param("ssss", $NewUserUID,$newFirstName, $newLastName, $newPerms);
     
     // Check if the parameter binding was successful
     if (!$bindResult) {
@@ -343,7 +362,7 @@ function CreateNewAccount($mysqliUsers,$NewUserUID,$newUsername){
 
 function GetUserUID($mysqliUsers,$username){
     // Prepare the SQL statement with placeholders
-    $sql = "SELECT * FROM users WHERE username = ?";
+    $sql = "SELECT * FROM users WHERE FirstName = ?";
 
     // Prepare the statement
     $stmt = $mysqliUsers->prepare($sql);

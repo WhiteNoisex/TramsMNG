@@ -1,0 +1,53 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #f4f4f4;
+  color: #333;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2c3e50;
+  padding: 1rem;
+  color: white;
+}
+
+.logo {
+  font-size: 1.5rem;
+}
+
+.top-nav a {
+  margin-left: 1rem;
+  color: #ecf0f1;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.top-nav a.active {
+  border-bottom: 2px solid #1abc9c;
+}
+
+.content {
+  padding: 2rem;
+}
+
+.admin-actions button {
+  margin: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  background: #3498db;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.output-area {
+  background: white;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  white-space: pre-wrap;
+}
