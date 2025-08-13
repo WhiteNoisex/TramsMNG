@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Driver Record — TRAMS DB</title>
+<style>
+:root{--bg:#0b1220;--panel:#0f172a;--ink:#e6f0ff;--muted:#9fb1c8;--brand:#22d3ee;--border:#22314d;--ok:#22c55e;--err:#ef4444}
+*{box-sizing:border-box} body{margin:0;background:#0a1020;color:var(--ink);font:15px/1.55 system-ui}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0f172a;border-bottom:1px solid var(--border)}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:900px;margin:20px auto;padding:0 16px}
+h1{margin:8px 0 14px}
+.form{background:#0f172a;border:1px solid var(--border);border-radius:14px;padding:16px;display:grid;gap:12px}
+.row{display:grid;gap:10px}
+@media(min-width:720px){.row{grid-template-columns:1fr 1fr}}
+label{font-weight:600;margin-bottom:4px;display:block}
+input,select,textarea{width:100%;border:1px solid var(--border);background:#0b1220;color:var(--ink);border-radius:10px;padding:10px}
+textarea{min-height:120px;resize:vertical}
+.btn{background:var(--brand);color:#00242b;border:none;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer}
+.btn.secondary{background:#17223b;color:#d7e5ff;border:1px solid var(--border)}
+.note{color:var(--muted)}
+.notice{margin-top:12px;padding:10px;border-radius:10px;border:1px solid var(--border)}
+.notice.ok{background:#0f2a19;color:#d9ffea;border-color:#174f2f}
+.notice.err{background:#2a0f13;color:#ffd9df;border-color:#5b1b24}
+.list{margin-top:16px;background:#0f172a;border:1px solid var(--border);border-radius:14px;padding:12px}
+.list h3{margin:0 0 8px}
+.item{border-top:1px solid var(--border);padding:8px 0}
+.item:first-child{border-top:none}
+.small{font-family:ui-monospace,monospace;color:#bcd}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="?A=logged.html">← Dashboard</a>
+  <strong>Driver Record</strong>
+  <span id="who"></span>
+</header>
+
+<main class="wrap">
+  <h1>Create / Update Driver Record</h1>
+  <p class="note">This attaches to the selected tram’s driver metadata (e.g., <code>Normal_Driver</code>) and optionally appends a structured entry to a driver log (your API can map to a separate table or a JSON column).</p>
+
+  <form id="frm" class="form" autocomplete="off">
+    <div class="row">
+      <div>
+        <label for="tramId">Tram</label>
+        <input id="tramId" name="Tram_ID" placeholder="e.g. 001" required pattern="\\d{1,6}"/>
+      </div>
+      <div>
+        <label for="tramName">Tram Name (optional)</label>
+        <input id="tramName" name="Tram_Name" placeholder="e.g. W8-1001"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="driverName">Driver Name</label>
+        <input id="driverName" name="Driver_Name" placeholder="e.g. R. Lewis" required/>
+      </div>
+      <div>
+        <label for="shiftDate">Shift Date</label>
+        <input id="shiftDate" type="date" name="Shift_Date" required/>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="startTime">Start Time</label>
+        <input id="startTime" type="time" name="Start_Time" required/>
+      </div>
+      <div>
+        <label for="endTime">End Time</label>
+        <input id="endTime" type="time" name="End_Time" required/>
+      </div>
+    </div>
+
+    <div>
+      <label for="notes">Driver Notes</label>
+      <textarea id="notes" name="Notes" placeholder="Route, handovers, operational remarks…"></textarea>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="updateNormalDriver">Update Normal Driver field?</label>
+        <select id="updateNormalDriver" name="Update_Normal_Driver">
+          <option value="yes">Yes — set Normal_Driver to Driver Name</option>
+          <option value="no" selected>No — only append to driver log</option>
+        </select>
+      </div>
+      <div>
+        <label for="appendLog">Append to Driver Log</label>
+        <select id="appendLog" name="Append_Log">
+          <option value="yes" selected>Yes — add an entry</option>
+          <option value="no">No — only update Normal_Driver if chosen</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <button class="btn" type="submit">Save Record</button>
+      <button class="btn secondary" type="button" id="previewBtn">Preview Payload</button>
+    </div>
+
+    <div id="msg" class="notice" hidden></div>
+    <pre id="preview" class="small" hidden></pre>
+  </form>
+
+  <section class="list">
+    <h3>Recent Driver Entries (sample)</h3>
+    <div id="recent"></div>
+  </section>
+</main>
+
+<script>
+const masterServer = "http://localhost/tramsMNG";
+const username = sessionStorage.getItem("username") || "Guest";
+const token = sessionStorage.getItem("token") || "";
+document.getElementById("who").textContent = username;
+
+const frm = document.getElementById("frm");
+const msg = document.getElementById("msg");
+const preview = document.getElementById("preview");
+const previewBtn = document.getElementById("previewBtn");
+const recent = document.getElementById("recent");
+
+// Sample recent (replace with API when ready)
+const sample = [
+  { Tram_ID:"001", Driver_Name:"R. Lewis", Shift_Date:"2025-08-12", Start_Time:"08:00", End_Time:"14:00", Notes:"Route 35 AM peak." },
+  { Tram_ID:"015", Driver_Name:"A. Singh", Shift_Date:"2025-08-11", Start_Time:"14:00", End_Time:"20:00", Notes:"Rainy conditions; minor delay." }
+];
+renderRecent(sample);
+
+previewBtn.addEventListener("click", ()=> {
+  const payload = formToPayload();
+  preview.hidden = false;
+  preview.textContent = JSON.stringify(payload, null, 2);
+});
+
+frm.addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  hideNotice();
+  const payload = formToPayload();
+
+  try{
+    const res = await fetch(`${masterServer}/api/DriverRecord_Create.php`,{
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const j = await res.json();
+    showNotice("Driver record saved.", false);
+    // Optionally refresh list from API:
+    // const list = await fetchRecent();
+    // renderRecent(list);
+  }catch(err){
+    showNotice(`Failed: ${err.message}`, true);
+  }
+});
+
+function formToPayload(){
+  const fd = new FormData(frm);
+  const obj = Object.fromEntries(fd.entries());
+  return {
+    Username: username, Token: token,
+    Tram_ID: obj.Tram_ID,
+    Tram_Name: obj.Tram_Name || null,
+    Driver_Name: obj.Driver_Name,
+    Shift_Date: obj.Shift_Date,
+    Start_Time: obj.Start_Time,
+    End_Time: obj.End_Time,
+    Notes: obj.Notes || "",
+    Update_Normal_Driver: obj.Update_Normal_Driver === "yes",
+    Append_Log: obj.Append_Log === "yes"
+  };
+}
+
+function showNotice(t, isErr){
+  msg.hidden = false;
+  msg.textContent = t;
+  msg.className = "notice " + (isErr? "err":"ok");
+}
+function hideNotice(){ msg.hidden = true; }
+
+function renderRecent(rows){
+  if(!rows?.length){ recent.innerHTML = "<em>No recent entries.</em>"; return; }
+  recent.innerHTML = rows.map(r=>`
+    <div class="item">
+      <strong>Tram ${escape(r.Tram_ID)}</strong> — ${escape(r.Driver_Name)}
+      <div class="small">${escape(r.Shift_Date)} ${escape(r.Start_Time)}–${escape(r.End_Time)}</div>
+      <div class="small">${escape(r.Notes||"")}</div>
+    </div>
+  `).join("");
+}
+function escape(s){return String(s??"").replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin Export — TRAMS DB</title>
+<style>
+:root{--bg:#0b1220;--panel:#0f172a;--ink:#e6f0ff;--muted:#9fb1c8;--brand:#22d3ee;--border:#22314d}
+*{box-sizing:border-box} body{margin:0;background:#0a1020;color:var(--ink);font:15px/1.55 system-ui}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0f172a;border-bottom:1px solid var(--border)}
+.wrap{max-width:900px;margin:20px auto;padding:0 16px}
+.panel{background:#0f172a;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:12px}
+@media(min-width:720px){.grid.two{grid-template-columns:1fr 1fr}}
+label{font-weight:600;margin-bottom:4px;display:block}
+input,select{width:100%;border:1px solid var(--border);background:#0b1220;color:var(--ink);border-radius:10px;padding:10px}
+.btn{background:var(--brand);color:#00242b;border:none;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer}
+.notice{padding:10px;border-radius:10px;border:1px solid var(--border);margin-top:12px}
+.ok{background:#0f2a19;color:#d9ffea;border-color:#174f2f}
+.err{background:#2a0f13;color:#ffd9df;border-color:#5b1b24}
+.small{font-family:ui-monospace,monospace;color:#bcd}
+</style>
+</head>
+<body>
+<header class="header">
+  <a href="?A=logged.html">← Dashboard</a>
+  <strong>Admin Export</strong>
+  <span id="who"></span>
+</header>
+
+<main class="wrap">
+  <section class="panel grid two">
+    <div>
+      <label for="dataset">Dataset</label>
+      <select id="dataset">
+        <option value="trams">Trams</option>
+        <option value="drivers">Drivers</option>
+        <option value="tickets">Tickets</option>
+      </select>
+    </div>
+    <div>
+      <label for="fmt">Format</label>
+      <select id="fmt">
+        <option>CSV</option>
+        <option>JSON</option>
+      </select>
+    </div>
+    <div>
+      <label for="city">City (optional)</label>
+      <input id="city" placeholder="e.g. Melbourne"/>
+    </div>
+    <div>
+      <label for="status">Status (optional)</label>
+      <select id="status">
+        <option value="">Any</option>
+        <option>Active</option>
+        <option>Out of Commission</option>
+        <option>Destroyed</option>
+      </select>
+    </div>
+    <div>
+      <label for="fromY">From Year</label>
+      <input id="fromY" type="number" min="1900" max="2100" value="1900"/>
+    </div>
+    <div>
+      <label for="toY">To Year</label>
+      <input id="toY" type="number" min="1900" max="2100" value="2100"/>
+    </div>
+    <div>
+      <button id="previewBtn" class="btn">Preview</button>
+      <button id="exportBtn" class="btn" style="background:#17223b;color:#d7e5ff;border:1px solid var(--border)">Export</button>
+    </div>
+    <div id="msg" class="notice" hidden></div>
+  </section>
+
+  <section class="panel">
+    <h3>Preview</h3>
+    <pre id="preview" class="small" hidden></pre>
+  </section>
+</main>
+
+<script>
+const masterServer = "http://localhost/tramsMNG";
+const username = sessionStorage.getItem("username") || "Guest";
+const token = sessionStorage.getItem("token") || "";
+document.getElementById("who").textContent = username;
+
+const els = {
+  dataset:document.getElementById("dataset"), fmt:document.getElementById("fmt"),
+  city:document.getElementById("city"), status:document.getElementById("status"),
+  fromY:document.getElementById("fromY"), toY:document.getElementById("toY"),
+  previewBtn:document.getElementById("previewBtn"), exportBtn:document.getElementById("exportBtn"),
+  preview:document.getElementById("preview"), msg:document.getElementById("msg")
+};
+
+els.previewBtn.addEventListener("click", async ()=>{
+  hide(); els.preview.hidden=true;
+  try{
+    const q = query();
+    const res = await fetch(`${masterServer}/api/Export_Preview.php`,{
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ Username:username, Token:token, ...q })
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const j = await res.json();
+    els.preview.hidden = false;
+    els.preview.textContent = JSON.stringify(j, null, 2);
+  }catch(e){ show(e.message, true); }
+});
+
+els.exportBtn.addEventListener("click", async ()=>{
+  hide();
+  try{
+    const q = query();
+    const res = await fetch(`${masterServer}/api/Export_Download.php`,{
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ Username:username, Token:token, ...q })
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `export_${q.dataset}.${q.fmt.toLowerCase()}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }catch(e){ show(e.message, true); }
+});
+
+function query(){
+  return {
+    dataset: els.dataset.value,
+    fmt: els.fmt.value,
+    filters:{
+      city: els.city.value || null,
+      status: els.status.value || null,
+      fromY: Number(els.fromY.value||1900),
+      toY: Number(els.toY.value||2100)
+    }
+  };
+}
+function show(t,bad){ els.msg.hidden=false; els.msg.textContent=t; els.msg.className="notice "+(bad?"err":"ok"); }
+function hide(){ els.msg.hidden=true; }
+</script>
+</body>
+</html>

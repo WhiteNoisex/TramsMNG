@@ -1,378 +1,383 @@
-var username = sessionStorage.getItem("username");
-var token = sessionStorage.getItem("token");
-var masterServer = "http://localhost/tramsMNG"
-var guest = true;
+// --- Auth & API base ---
+let username = sessionStorage.getItem("username") || "GuestGuest";
+let token = sessionStorage.getItem("token") || "";
+let guest = (username === "GuestGuest");
+const masterServer = "http://localhost/tramsMNG";
 
-if(!username)
-{
-  username = "Guest";
-  guest = true;
+// --- State ---
+let trams = [];
+let currentTram = null;
+
+// --- DOM ---
+const tbody = document.getElementById("tramTableBody");
+const searchInput = document.getElementById("searchInput");
+const filterForm = document.getElementById("filterForm");
+const notice = document.getElementById("notice");
+const emptyState = document.getElementById("emptyState");
+
+// Range slider elements
+const fromSlider = document.getElementById("fromSlider");
+const toSlider   = document.getElementById("toSlider");
+const fromInput  = document.getElementById("fromInput");
+const toInput    = document.getElementById("toInput");
+
+// Modal elements
+const modal = document.getElementById("tramModal");
+const modalClose = document.getElementById("modalClose");
+const historyContent = document.getElementById("historyContent");
+
+// --- Utils ---
+const debounce = (fn, ms = 180) => {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(null, args), ms);
+  };
+};
+
+// Normalize status values (handles “OutofCommision”, etc.)
+function normalizeStatus(s) {
+  if (!s) return "";
+  const x = String(s).toLowerCase().replace(/\s+/g, "");
+  if (x.includes("destroy")) return "Destroyed";
+  if (x.includes("outofcomm")) return "Out of Commission";
+  return "Active";
 }
-else
-{
-  guest = false;
-}
 
-var trams = [
-  {id: "001", name: "Z3-215", type: "Z-Class", status: "Active", period: "1992-2022", more: "View", isHistoric: false, age: 30, city: "Melbourne"},
-  {id: "015", name: "W8-1002", type: "W-Class", status: "Out of Commision", period: "1950-2005", more: "View", isHistoric: true, age: 55, city: "Melbourne"},
-  {id: "237", name: "E2-6012", type: "E-Class", status: "Active", period: "2016-Now", more: "View", isHistoric: false, age: 7, city: "Melbourne"},
-  {id: "018", name: "A2-273", type: "A-Class", status: "Destroyed", period: "1988-2020", more: "View", isHistoric: false, age: 32, city: "Sydney"},
-  {id: "299", name: "B2-2101", type: "B-Class", status: "Active", period: "1990-2025", more: "View", isHistoric: false, age: 32, city: "Melbourne"},
-];
-
-function renderTable() {
-  const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
-  const statusChecked = Array.from(document.querySelectorAll('input[name="status"]:checked')).map(cb => cb.value);
-  const isHistoric = document.querySelector('input[name="historic"]').checked;
-  const age = Number(document.getElementById('ageRange').value);
-  const cityVal = document.getElementById('cityInput').value.trim().toLowerCase();
-
-  document.getElementById('ageValue').textContent = `${age}+`;
-
-  const tbody = document.getElementById('tramTableBody');
-  tbody.innerHTML = "";
-  trams.filter(tram => {
-    // Status
-    if (statusChecked.length && !statusChecked.includes(tram.status)) return false;
-    // Historic
-    if (isHistoric && !tram.isHistoric) return false;
-    // Age
-    if (tram.age < age) return false;
-    // City
-    if (cityVal && !tram.city.toLowerCase().includes(cityVal)) return false;
-    // Search box (by id, name, or type)
-    if (
-      searchVal &&
-      !tram.id.toLowerCase().includes(searchVal) &&
-      !tram.name.toLowerCase().includes(searchVal) &&
-      !tram.type.toLowerCase().includes(searchVal)
-    ) return false;
-    return true;
-  }).forEach(tram => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${tram.id}</td>
-      <td>${tram.name}</td>
-      <td>${tram.type}</td>
-      <td>${tram.status}</td>
-      <td>${tram.period}</td>
-      <td><a href="#">${tram.more}</a></td>
-    `;
-    tbody.appendChild(row);
-  });
+function parseHistoryField(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function transformTramData(rawData, isGuest = true) {
   return rawData.map(row => {
     const startYear = parseInt(row.Operating_Year_S);
-    const endYear = row.Operating_Year_E?.toLowerCase() === "now" || !row.Operating_Year_E
-      ? new Date().getFullYear()
-      : parseInt(row.Operating_Year_E);
+    const endYear = (row.Operating_Year_E && String(row.Operating_Year_E).toLowerCase() !== "now")
+      ? parseInt(row.Operating_Year_E)
+      : new Date().getFullYear();
 
-    const baseData = {
+    const base = {
       id: String(row.ID).padStart(3, "0"),
       name: row.Tram_Name,
       type: row.Tram_Type,
-      status: row.Service_State,
+      status: normalizeStatus(row.Service_State),
       period: `${row.Operating_Year_S}-${row.Operating_Year_E || "Now"}`,
       operating_start: row.Operating_Year_S,
-      operating_end: row.Operating_Year_E,
-      more: "View",
+      operating_end: row.Operating_Year_E || "Now",
       isHistoric: row.Historic === "1" || row.Historic === 1 || row.Historic === true,
-      age: endYear - startYear,
-      city: row.Operating_City,
-      tram_type: row.Tram_Type
+      city: row.Operating_City || "",
+      more: "View",
+      raw: row
     };
 
-    if (!isGuest) {
-      return {
-        ...baseData,
-        damage_history: row.Damage_History,
-        disablity_comp: row.Disablity_Compliance,
-        eol_goal: row.EOL_GOAL,
-        engine_details: row.Engine_Details,
-        historic: row.Historic,
-        maintenance_history: row.Maintenance_History,
-        photo_location: row.Photo_Location,
-        power_type: row.Power_Type,
-        seat_cap: row.Seat_Capacity,
-        drives_history: row.Drives_History
-      };
-    }
+    if (isGuest) return base;
 
-    return baseData;
+    return {
+      ...base,
+      eol_goal: row.EOL_GOAL ?? "",
+      photo_location: row.Photo_Location ?? "",
+      power_type: row.Power_Type ?? "",
+      seat_cap: row.Seat_Capacity ?? "",
+      engine_details: row.Engine_Details ?? "",
+      Tram_Route: row.Tram_Route ?? "",
+      disablity_comp: row.Disablity_Compliance ?? "",
+      Normal_Driver: row.Normal_Driver ?? "",
+      Servicing_History: parseHistoryField(row.Servicing_History),
+      Damage_History: parseHistoryField(row.Damage_History),
+      Maintenance_History: parseHistoryField(row.Maintenance_History)
+    };
   });
 }
 
 
+// Fetch from backend (graceful errors)
+async function getUpdatedTrams() {
+  try {
+    const res = await fetch(`${masterServer}/api/GetTramsList_API_.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ Username: username, Token: token })
+    });
 
-async function GetUpdatedTrams()
-{
-    //
-
-    try {
-
-        //console.log(hashData);
-
-        const response = await fetch(masterServer + '/api/GetTramsList_API_.php', {
-            method: 'post',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                Username: username,
-                Token: token
-            })
-        });
-
-        if (response.ok) {
-            const responseData = await response.json();
-
-            //console.log(responseData);
-            return transformTramData(responseData, guest);
-            // Add any further actions for successful authentication
-        } 
-        else if(response.status === 401)
-        {
-            console.log('Invalid Access')
-            return [];
-            //window.location.replace("index.html")
-        }
-        else {
-            const responseData = await response.json();
-
-            console.error(responseData.error); // Error message
-            return [];
-            // Add any further error handling
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        return [];
-        // Add any further error handling
+    if (res.status === 401) {
+      showNotice("Invalid access. Some data may be hidden until you log in.", true);
+      return [];
     }
+    if (!res.ok) {
+      const j = await safeJson(res);
+      showNotice(j?.error || `Server error (${res.status})`, true);
+      return [];
+    }
+    const data = await res.json();
+    hideNotice();
+    return transformTramData(data, guest);
+  } catch (e) {
+    showNotice(`Network error: ${e.message}`, true);
+    return [];
+  }
 }
+async function safeJson(res){ try { return await res.json(); } catch { return null; } }
 
+function showNotice(msg, isError=false){
+  if (!notice) return;
+  notice.textContent = msg;
+  notice.hidden = false;
+  notice.style.color = isError ? "#ffd0d0" : "#eaffff";
+}
+function hideNotice(){ if (notice) notice.hidden = true; }
 
-renderTable();
+// --- Render ---
+function renderTable() {
+  const searchVal = searchInput.value.trim().toLowerCase();
 
-document.getElementById('searchInput').addEventListener('input', renderTable);
-document.getElementById('filterForm').addEventListener('input', renderTable), function() {
-  document.getElementById('ageValue').textContent = this.value + '+';
-  renderTable();
-};
+  const statusChecked = Array.from(filterForm.querySelectorAll('input[name="status"]:checked'))
+    .map(cb => cb.value);
 
-// Update your renderTable filter:
-async function renderTable() {
-  trams = await GetUpdatedTrams();
-  const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
-  const statusChecked = Array.from(document.querySelectorAll('input[name="status"]:checked')).map(cb => cb.value);
-  const isHistoric = document.querySelector('input[name="historic"]').checked;
-  const cityVal = document.getElementById('cityInput').value.trim().toLowerCase();
+  const isHistoricOnly = filterForm.querySelector('input[name="historic"]').checked;
+  const cityVal = document.getElementById("cityInput").value.trim().toLowerCase();
 
-  const minYear = parseInt(document.getElementById('fromSlider').value, 10);
-  const maxYear = parseInt(document.getElementById('toSlider').value, 10);
+  const minYear = parseInt(fromSlider.value, 10);
+  const maxYear = parseInt(toSlider.value, 10);
 
-
-  const tbody = document.getElementById('tramTableBody');
   tbody.innerHTML = "";
-  trams.filter(tram => {
-    // Status
-    if (statusChecked.length && !statusChecked.includes(tram.status)) return false;
-    // Historic
-    if (isHistoric && !tram.isHistoric) return false;
-    // Operating year filter (assuming tram.period is like '1992-2022' or '2016-Now')
-    let period = tram.period.split('-');
-    let opStart = parseInt(period[0]);
-    let opEnd = period[1] === "Now" ? 2025 : parseInt(period[1]);
-    if (opStart > maxYear || opEnd < minYear) return false;
-    // City
-    if (cityVal && !tram.city.toLowerCase().includes(cityVal)) return false;
-    // Search box
-    if (
-      searchVal &&
-      !tram.id.toLowerCase().includes(searchVal) &&
-      !tram.name.toLowerCase().includes(searchVal) &&
-      !tram.type.toLowerCase().includes(searchVal)
-    ) return false;
+
+  const rows = trams.filter(t => {
+    if (statusChecked.length && !statusChecked.includes(t.status)) return false;
+    if (isHistoricOnly && !t.isHistoric) return false;
+
+    const [s, e] = String(t.period).split("-");
+    const opStart = parseInt(s, 10);
+    const opEnd = (e === "Now") ? new Date().getFullYear() : parseInt(e, 10);
+    if (Number.isFinite(opStart) && Number.isFinite(opEnd)) {
+      if (opStart > maxYear || opEnd < minYear) return false;
+    }
+
+    if (cityVal && !t.city.toLowerCase().includes(cityVal)) return false;
+
+    if (searchVal) {
+      const blob = `${t.id} ${t.name} ${t.type}`.toLowerCase();
+      if (!blob.includes(searchVal)) return false;
+    }
     return true;
-  }).forEach(tram => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${tram.id}</td>
-      <td>${tram.name}</td>
-      <td>${tram.type}</td>
-      <td>${tram.status}</td>
-      <td>${tram.period}</td>
-      <td><a href='javascript:void(0);' onclick='openModal(${tram.id})'>View</a></td>
+  });
 
+  if (!rows.length) {
+    emptyState.hidden = false;
+    return;
+  }
+  emptyState.hidden = true;
+
+  const frag = document.createDocumentFragment();
+  rows.forEach(t => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${t.id}</td>
+      <td>${t.name}</td>
+      <td>${t.type}</td>
+      <td>${t.status}</td>
+      <td>${t.period}</td>
+      <td><a href="javascript:void(0)" data-tramid="${t.id}" class="view-link">View</a></td>
     `;
-    tbody.appendChild(row);
+    frag.appendChild(tr);
   });
+  tbody.appendChild(frag);
 }
 
+// --- Modal / History ---
+function openModal(tramId){
+  if (guest) { alert("Please log in to view full details."); return; }
 
+  const t = trams.find(x => x.id === String(tramId).padStart(3,"0"));
+  if (!t) return;
 
-function controlFromInput(fromSlider, fromInput, toInput, controlSlider) {
-    const [from, to] = getParsed(fromInput, toInput);
-    fillSlider(fromInput, toInput, '#C6C6C6', '#25daa5', controlSlider);
-    if (from > to) {
-        fromSlider.value = to;
-        fromInput.value = to;
-    } else {
-        fromSlider.value = from;
-    }
+  currentTram = t;
+
+  // Fill fields
+  setTxt("modal_id", t.id);
+  setTxt("modal_name", t.name);
+  setTxt("modal_start_year", t.operating_start ?? "");
+  setTxt("modal_end_year", t.operating_end ?? "");
+  setTxt("modal_status", t.status ?? "");
+  setTxt("modal_historic", t.isHistoric ? "Yes" : "No");
+  setTxt("modal_eol_goal", t.eol_goal ?? "");
+  setTxt("modal_type", t.type ?? "");
+  setTxt("modal_photo", t.photo_location ?? "");
+  setTxt("modal_city", t.city ?? "");
+  setTxt("modal_power", t.power_type ?? "");
+  setTxt("modal_seat", t.seat_cap ?? "");
+  setTxt("modal_engine", t.engine_details ?? "");
+  setTxt("modal_route", t.Tram_Route ?? "");
+  setTxt("modal_disability", t.disablity_comp ?? "");
+  setTxt("modal_driver", t.Normal_Driver ?? "");
+
+  // Default tab
+  setActiveTab("Servicing_History");
+  modal.setAttribute("aria-hidden","false");
 }
-    
-function controlToInput(toSlider, fromInput, toInput, controlSlider) {
-    const [from, to] = getParsed(fromInput, toInput);
-    fillSlider(fromInput, toInput, '#C6C6C6', '#25daa5', controlSlider);
-    setToggleAccessible(toInput);
-    if (from <= to) {
-        toSlider.value = to;
-        toInput.value = to;
-    } else {
-        toInput.value = from;
-    }
+function closeModal(){
+  modal.setAttribute("aria-hidden","true");
+  historyContent.innerHTML = "";
+  currentTram = null;
+}
+function setTxt(id, val){ const el = document.getElementById(id); if (el) el.textContent = val; }
+
+function renderHistoryList(tab, entries) {
+  if (tab === "Normal_Driver") {
+    return `<h3>Driver</h3>
+            <p>${escapeHtml(currentTram?.Normal_Driver || "No driver assigned.")}</p>`;
+  }
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return `<p>No ${tab.replaceAll("_"," ").toLowerCase()} available.</p>`;
+  }
+
+  return `
+    <h3>${tab.replaceAll("_", " ")}</h3>
+    <div class="history-list">
+      ${entries.map((entry, i) => {
+        if (typeof entry === 'string') {
+          return `<div class="history-entry">
+                    <div class="history-title">Entry ${i+1}</div>
+                    <div class="history-body">${escapeHtml(entry)}</div>
+                  </div>`;
+        }
+
+        if (typeof entry === 'object' && entry !== null) {
+          return `
+            <div class="history-entry">
+              <div class="history-title">Entry ${i+1}</div>
+              <div class="history-body">
+                ${Object.entries(entry).map(([key, value]) => {
+                  return `<div class="history-line">
+                            <span class="history-key">${escapeHtml(key)}:</span> 
+                            <span class="history-value">${escapeHtml(String(value))}</span>
+                          </div>`;
+                }).join("")}
+              </div>
+            </div>
+          `;
+        }
+
+        return `<div class="history-entry">Entry ${i+1}: ${escapeHtml(String(entry))}</div>`;
+      }).join("")}
+    </div>
+  `;
 }
 
-function controlFromSlider(fromSlider, toSlider, fromInput) {
-  const [from, to] = getParsed(fromSlider, toSlider);
-  fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
-  if (from > to) {
-    fromSlider.value = to;
-    fromInput.value = to;
+function setActiveTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach(b => 
+    b.classList.toggle("is-active", b.dataset.tab === tab)
+  );
+
+  if (!currentTram) return;
+
+  if (tab === "Normal_Driver") {
+    historyContent.innerHTML = renderHistoryList(tab, null);
   } else {
-    fromInput.value = from;
+    historyContent.innerHTML = renderHistoryList(tab, currentTram[tab]);
   }
 }
 
-function controlToSlider(fromSlider, toSlider, toInput) {
-  const [from, to] = getParsed(fromSlider, toSlider);
-  fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
+
+
+function escapeHtml(s){ return s.replace(/[&<>]/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;" }[m])); }
+
+// --- Range sync ---
+function getParsed(a,b){ return [parseInt(a.value,10), parseInt(b.value,10)]; }
+function fillSlider(from, to, sliderColor, rangeColor, controlSlider){
+  const rangeDistance = to.max - to.min;
+  const fromPosition = from.value - to.min;
+  const toPosition   = to.value - to.min;
+  controlSlider.style.background = `linear-gradient(
+    to right,
+    ${sliderColor} 0%,
+    ${sliderColor} ${(fromPosition)/(rangeDistance)*100}%,
+    ${rangeColor} ${((fromPosition)/(rangeDistance))*100}%,
+    ${rangeColor} ${(toPosition)/(rangeDistance)*100}%,
+    ${sliderColor} ${(toPosition)/(rangeDistance)*100}%,
+    ${sliderColor} 100%)`;
+}
+function setToggleAccessible(currentTarget){
+  const toS = document.querySelector('#toSlider');
+  toS.style.zIndex = (Number(currentTarget.value) <= 0) ? 2 : 0;
+}
+function controlFromSlider(fromS, toS, fromI){
+  const [from, to] = getParsed(fromS, toS);
+  fillSlider(fromS, toS, '#475569', '#22d3ee', toS);
+  if (from > to){ fromS.value = to; fromI.value = to; }
+  else { fromI.value = from; }
+  renderTable();
+}
+function controlToSlider(fromS, toS, toI){
+  const [from, to] = getParsed(fromS, toS);
+  fillSlider(fromS, toS, '#475569', '#22d3ee', toS);
+  setToggleAccessible(toS);
+  if (from <= to){ toS.value = to; toI.value = to; }
+  else { toI.value = from; toS.value = from; }
+  renderTable();
+}
+function controlFromInput(fromS, fromI, toI, controlSlider){
+  const [from, to] = getParsed(fromI, toI);
+  fillSlider(fromI, toI, '#475569', '#22d3ee', controlSlider);
+  if (from > to){ fromS.value = to; fromI.value = to; }
+  else { fromS.value = from; }
+  renderTable();
+}
+function controlToInput(toS, fromI, toI, controlSlider){
+  const [from, to] = getParsed(fromI, toI);
+  fillSlider(fromI, toI, '#475569', '#22d3ee', controlSlider);
+  setToggleAccessible(toI);
+  if (from <= to){ toS.value = to; toI.value = to; }
+  else { toI.value = from; }
+  renderTable();
+}
+
+// --- Events ---
+document.addEventListener("click", (e)=>{
+  const a = e.target.closest(".view-link");
+  if (a){
+    const id = a.getAttribute("data-tramid");
+    openModal(id);
+  }
+  const tabBtn = e.target.closest(".tab-btn");
+  if (tabBtn){
+    setActiveTab(tabBtn.dataset.tab);
+  }
+});
+modalClose.addEventListener("click", closeModal);
+modal.addEventListener("click", (e)=>{ if (e.target === modal) closeModal(); });
+
+searchInput.addEventListener("input", debounce(renderTable, 120));
+filterForm.addEventListener("input", renderTable);
+
+fromSlider.addEventListener("input", ()=>controlFromSlider(fromSlider, toSlider, fromInput));
+toSlider.addEventListener("input", ()=>controlToSlider(fromSlider, toSlider, toInput));
+fromInput.addEventListener("input", ()=>controlFromInput(fromSlider, fromInput, toInput, toSlider));
+toInput.addEventListener("input",   ()=>controlToInput(toSlider, fromInput, toInput, toSlider));
+
+// --- Init ---
+(async function init(){
+  // style initial range background
+  fillSlider(fromSlider, toSlider, '#475569', '#22d3ee', toSlider);
   setToggleAccessible(toSlider);
-  if (from <= to) {
-    toSlider.value = to;
-    toInput.value = to;
-  } else {
-    toInput.value = from;
-    toSlider.value = from;
-  }
-}
 
-function getParsed(currentFrom, currentTo) {
-  const from = parseInt(currentFrom.value, 10);
-  const to = parseInt(currentTo.value, 10);
-  return [from, to];
-}
+  trams = await getUpdatedTrams();
 
-function fillSlider(from, to, sliderColor, rangeColor, controlSlider) {
-    const rangeDistance = to.max-to.min;
-    const fromPosition = from.value - to.min;
-    const toPosition = to.value - to.min;
-    controlSlider.style.background = `linear-gradient(
-      to right,
-      ${sliderColor} 0%,
-      ${sliderColor} ${(fromPosition)/(rangeDistance)*100}%,
-      ${rangeColor} ${((fromPosition)/(rangeDistance))*100}%,
-      ${rangeColor} ${(toPosition)/(rangeDistance)*100}%, 
-      ${sliderColor} ${(toPosition)/(rangeDistance)*100}%, 
-      ${sliderColor} 100%)`;
-}
-
-function setToggleAccessible(currentTarget) {
-  const toSlider = document.querySelector('#toSlider');
-  if (Number(currentTarget.value) <= 0 ) {
-    toSlider.style.zIndex = 2;
-  } else {
-    toSlider.style.zIndex = 0;
-  }
-}
-
-function openModal(tramID) {
-  if(!username || username == "Guest")
-  {
-    alert("Please Login To View This Data");
-    return;
+  // Fallback sample if API empty (dev mode)
+  if (!trams.length){
+    trams = transformTramData([
+      {ID:1, Tram_Name:"Z3-215", Tram_Type:"Z-Class", Service_State:"Active", Operating_Year_S:1992, Operating_Year_E:2022, Historic:0, Operating_City:"Melbourne"},
+      {ID:15, Tram_Name:"W8-1002", Tram_Type:"W-Class", Service_State:"OutofCommision", Operating_Year_S:1950, Operating_Year_E:2005, Historic:1, Operating_City:"Melbourne"},
+      {ID:237, Tram_Name:"E2-6012", Tram_Type:"E-Class", Service_State:"Active", Operating_Year_S:2016, Operating_Year_E:"Now", Historic:0, Operating_City:"Melbourne"}
+    ], guest);
+    showNotice("Showing sample data (API returned no rows).");
   }
 
- let found = false;
-  var tram = null;
-  for (let i = 0; i < trams.length; i++) {
-    if (trams[i].id == tramID) {
-      found = true;
-      tram = trams[i];
-      console.log(tram);
-      break; // This works
-    }
-  }
-
-
-  let currentTram = null;
-
-function openHistoryPopup(tram) {
-  currentTram = tram;
-  loadTab("Servicing_History");
-  document.getElementById("historyPopup").style.display = "block";
-}
-
-function loadTab(tabName) {
-  const content = currentTram[tabName];
-  const container = document.getElementById("historyContent");
-
-  if (!content || content.length === 0) {
-    container.innerHTML = `<p>No ${tabName.replace("_", " ")} available.</p>`;
-    return;
-  }
-
-  let html = `<h3>${tabName.replace("_", " ")}</h3><ul>`;
-  content.forEach((entry, i) => {
-    html += `<li><strong>Entry ${i + 1}:</strong><pre>${JSON.stringify(entry, null, 2)}</pre></li>`;
-  });
-  html += `</ul>`;
-  container.innerHTML = html;
-}
-
-
-  document.getElementById('modal_id').innerText = tram.id;
-  document.getElementById('modal_name').innerText = tram.name;
-  document.getElementById('modal_start_year').innerText = tram.operating_start;
-  document.getElementById('modal_end_year').innerText = tram.operating_end;
-  document.getElementById('modal_status').innerText = tram.status;
-  document.getElementById('modal_historic').innerText = tram.isHistoric == 1 ? 'Yes' : 'No';
-  document.getElementById('modal_eol_goal').innerText = tram.eol_goal;
-  document.getElementById('modal_type').innerText = tram.tram_type;
-  document.getElementById('modal_photo').innerText = tram.photo_location;
-  document.getElementById('modal_city').innerText = tram.city;
-  document.getElementById('modal_power').innerText = tram.power_type;
-  document.getElementById('modal_seat').innerText = tram.seat_cap;
-  document.getElementById('modal_engine').innerText = tram.engine_details;
-  document.getElementById('modal_route').innerText = tram.Tram_Route;
-  document.getElementById('modal_disability').innerText = tram.disablity_comp;
-  document.getElementById('modal_driver').innerText = tram.Normal_Driver;
-  document.getElementById('modal_service').innerText = tram.service_history;
-  document.getElementById('modal_damage').innerText = tram.damage_history;
-  document.getElementById('modal_maintenance').innerText = tram.maintenance_history;
-
-  document.getElementById('tramModal').style.display = 'block';
-}
-
-function closeModal() {
-  document.getElementById('tramModal').style.display = 'none';
-}
-
-
-
-
-
-const fromSlider = document.querySelector('#fromSlider');
-const toSlider = document.querySelector('#toSlider');
-const fromInput = document.querySelector('#fromInput');
-const toInput = document.querySelector('#toInput');
-fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
-setToggleAccessible(toSlider);
-
-fromSlider.oninput = () => controlFromSlider(fromSlider, toSlider, fromInput);
-toSlider.oninput = () => controlToSlider(fromSlider, toSlider, toInput);
-fromInput.oninput = () => controlFromInput(fromSlider, fromInput, toInput, toSlider);
-toInput.oninput = () => controlToInput(toSlider, fromInput, toInput, toSlider);
+  renderTable();
+})();

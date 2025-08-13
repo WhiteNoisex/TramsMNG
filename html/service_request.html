@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Service Request — TRAMS DB</title>
+<style>
+:root{--bg:#0b1220;--panel:#0f172a;--ink:#e6f0ff;--muted:#9fb1c8;--brand:#22d3ee;--border:#22314d;--card:#121b2e}
+*{box-sizing:border-box}body{margin:0;background:#0a0f1f;color:var(--ink);font:15px/1.55 system-ui}
+.wrap{max-width:860px;margin:22px auto;padding:0 16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+label{display:block;margin:10px 0 6px;color:var(--muted)}
+input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0e1730;color:var(--ink)}
+textarea{min-height:120px}
+.btn{background:var(--brand);color:#001b22;border:none;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer}
+.notice{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#10203a;color:#cde7ff}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#0f172a;border-bottom:1px solid var(--border)}
+.logo{font-weight:800}.logo b{color:var(--brand)}.nav{display:flex;gap:14px}.nav a{color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="logo" href="?A=logged.html">🚋 <b>TRAMS</b> DB</a>
+  <nav class="nav">
+    <a href="?A=search_basic.html">Search</a>
+    <a href="?A=logged.html">Dashboard</a>
+  </nav>
+</header>
+<main class="wrap">
+  <div class="card">
+    <h1>Request Servicing</h1>
+    <label>Tram ID <input id="tramId" placeholder="e.g. 237"/></label>
+    <label>Category
+      <select id="category">
+        <option>Electrical</option><option>Mechanical</option><option>Body</option><option>Other</option>
+      </select>
+    </label>
+    <label>Priority
+      <select id="priority">
+        <option>Low</option><option>Medium</option><option>High</option><option>Critical</option>
+      </select>
+    </label>
+    <label>Details <textarea id="details" placeholder="Describe the issue…"></textarea></label>
+    <button id="submit" class="btn">Submit Ticket</button>
+    <div id="notice" class="notice" hidden></div>
+  </div>
+</main>
+<script>
+const masterServer="http://localhost/tramsMNG";
+const notice=document.getElementById("notice");
+document.getElementById("submit").onclick=async()=>{
+  const Username=sessionStorage.getItem("username")||"Guest";
+  const Token=sessionStorage.getItem("token")||"";
+  if(!Token||Username==="Guest") return show("Please login first.",true);
+  const Tram_ID=document.getElementById("tramId").value.trim();
+  const Category=document.getElementById("category").value;
+  const Priority=document.getElementById("priority").value;
+  const Details=document.getElementById("details").value.trim();
+  if(!Tram_ID||!Details) return show("Tram ID and details are required.",true);
+  try{
+    // const res=await fetch(`${masterServer}/api/Driver_NewServiceTicket.php`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({Username,Token,Tram_ID,Category,Priority,Details})});
+    // const j=await res.json(); if(!res.ok) throw new Error(j?.error||res.statusText);
+    show("Service ticket submitted (demo).");
+  }catch(e){show("Failed: "+e.message,true);}
+};
+function show(msg,err=false){notice.hidden=false; notice.textContent=msg; notice.style.color=err?"#ffd0d0":"#eaffff";}
+</script>
+</body>
+</html>

@@ -44,15 +44,15 @@ $requestData = array_map(function($value) {
 }, $requestData);
 
 // Check if the required POST parameters are set
-if (isset($requestData['USERUID']) && isset($requestData['Token']) && isset($requestData['NewFirstName'])  && isset($requestData['NewLastName']) && isset($requestData["Perms"])) {
+if (isset($requestData['username']) && isset($requestData['Token']) && isset($requestData['NewFirstName'])  && isset($requestData['NewLastName']) && isset($requestData["Perms"])) {
     // Extract username and password from POST parameters
-    $userUID = $requestData['USERUID'];
+    $username = $requestData['username'];
     $newFirstName = $requestData['NewFirstNameName'];
     $newLastName = $requestData['NewLastNameName'];
     $token = $requestData['Token'];
     $perms = $requestData['Perms'];
     
-    //$userUID = GetUserUID($conn,$username);
+    $userUID = GetUserUID($conn,$username);
     $timestamp = date("Y-m-d H:i:s");
 
     if (strlen($newFirstName) > 10) {
@@ -362,7 +362,7 @@ function CreateNewAccount($mysqliUsers,$NewUserUID,$newFirstName, $newLastName, 
 
 function GetUserUID($mysqliUsers,$username){
     // Prepare the SQL statement with placeholders
-    $sql = "SELECT * FROM users WHERE FirstName = ?";
+    $sql = "SELECT * FROM users WHERE CONCAT(FirstName, LastName) = ?";
 
     // Prepare the statement
     $stmt = $mysqliUsers->prepare($sql);

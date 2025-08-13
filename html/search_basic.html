@@ -2,75 +2,83 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Tram Database Search</title>
   <link rel="stylesheet" href="css/search_styles.css"/>
 </head>
 <body>
   <!-- Top Bar -->
-    <header class="topbar">
+  <header class="topbar">
     <div class="nav-left">
-        <span class="logo">TRAMS DB</span>
-        <a href="?A=Landing.html">Home</a>
-        <a href="?A=search_basic.html">Search</a>
-        <a href="#">About</a>
+      <a class="logo" href="?A=landing.html" aria-label="TRAMS DB Home">🚋 TRAMS DB</a>
+      <nav class="topnav" aria-label="Primary">
+        <a href="?A=landing.html">Home</a>
+        <a class="is-active" href="?A=search_basic.html">Search</a>
+        <a href="#about">About</a>
+      </nav>
     </div>
     <a href="?A=login.html" class="login-btn">Login</a>
-    </header>
+  </header>
 
-
-  <!-- Layout Wrapper -->
+  <!-- Layout -->
   <div class="layout">
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="Filters">
+      <form id="filterForm" autocomplete="off">
         <h3>Filters</h3>
-        <form id="filterForm">
-            <div class="filter-group">
-            <div class="filter-label">Status</div>
-            <label><input type="checkbox" name="status" value="Active" checked> Active</label><br>
-            <label><input type="checkbox" name="status" value="OutofCommision"> Out of Commission</label><br>
-            <label><input type="checkbox" name="status" value="Destroyed"> Destroyed</label>
-            </div>
-            <div class="filter-group">
-            <label><input type="checkbox" name="historic" value="Historic"> Historic</label>
-            </div>
-            <div class="range_container">
-                <div class="filter-label">Operating Period</div>
-                <div class="sliders_control">
-                    <input id="fromSlider" type="range" value="1900" min="1900" max="2025"/>
-                    <input id="toSlider" type="range" value="2025" min="1900" max="2025"/>
-                </div>
-                <div class="form_control">
-                    <div class="form_control_container">
-                        <div class="form_control_container__time">Min</div>
-                        <input class="form_control_container__time__input" type="number" id="fromInput" value="1900" min="1920" max="2025"/>
-                    </div>
-                    <div class="form_control_container">
-                        <div class="form_control_container__time">Max</div>
-                        <input class="form_control_container__time__input" type="number" id="toInput" value="2025" min="1920" max="2025"/>
-                    </div>
-                </div>
-            </div>
 
-            <div class="filter-group">
-            <div class="filter-label">Operating City</div>
-            <input type="text" id="cityInput" name="city" placeholder="e.g. Melbourne">
+        <div class="filter-group">
+          <div class="filter-label">Status</div>
+          <label><input type="checkbox" name="status" value="Active" checked> Active</label>
+          <label><input type="checkbox" name="status" value="Out of Commission"> Out of Commission</label>
+          <label><input type="checkbox" name="status" value="Destroyed"> Destroyed</label>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">Historic</div>
+          <label><input type="checkbox" name="historic" value="Historic"> Show only historic</label>
+        </div>
+
+        <div class="filter-group range_container">
+          <div class="filter-label">Operating Period</div>
+          <div class="sliders_control">
+            <input id="fromSlider" type="range" value="1900" min="1900" max="2025" aria-label="Start Year"/>
+            <input id="toSlider"   type="range" value="2025" min="1900" max="2025" aria-label="End Year"/>
+          </div>
+          <div class="form_control">
+            <div class="form_control_container">
+              <div class="form_control_container__time">Min</div>
+              <input class="form_control_container__time__input" type="number" id="fromInput" value="1900" min="1900" max="2025"/>
             </div>
-        </form>
+            <div class="form_control_container">
+              <div class="form_control_container__time">Max</div>
+              <input class="form_control_container__time__input" type="number" id="toInput" value="2025" min="1900" max="2025"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">Operating City</div>
+          <input type="text" id="cityInput" name="city" placeholder="e.g. Melbourne" inputmode="search">
+        </div>
+      </form>
     </aside>
 
-    
-    <!-- Main Content -->
+    <!-- Main -->
     <main class="main-content">
       <div class="search-bar-row">
-        <input 
-          type="text" 
-          id="searchInput" 
-          placeholder="Search by Tram ID or keyword..."
+        <input
+          type="search"
+          id="searchInput"
+          placeholder="Search by ID, name, or type…"
+          aria-label="Search trams"
           autocomplete="off"
-        >
+        />
       </div>
-      <div class="table-container">
+
+      <div id="notice" class="notice" hidden></div>
+
+      <div class="table-container" aria-live="polite">
         <table class="tram-table">
           <thead>
             <tr>
@@ -79,59 +87,55 @@
               <th>Type</th>
               <th>Status</th>
               <th>Operating Period</th>
-              <th>More...</th>
+              <th>More</th>
             </tr>
           </thead>
           <tbody id="tramTableBody">
-            <!-- JS will render rows here -->
+            <!-- JS renders rows -->
           </tbody>
         </table>
+
+        <div id="emptyState" class="empty" hidden>
+          <div class="empty-emoji">🕵️‍♂️</div>
+          <p>No trams match your filters.</p>
+        </div>
       </div>
     </main>
   </div>
 
-  <div id="tramModal" class="modal" style="display: none;">
-  <div class="modal-content">
-    <span class="close-btn" onclick="closeModal()">&times;</span>
-    <h2 id="tramTitle">Tram Full Details</h2>
-    <div class="modal-body">
-      <p><strong>ID:</strong> <span id="modal_id"></span></p>
-      <p><strong>Name:</strong> <span id="modal_name"></span></p>
-      <p><strong>Start Year:</strong> <span id="modal_start_year"></span></p>
-      <p><strong>End Year:</strong> <span id="modal_end_year"></span></p>
-      <p><strong>Status:</strong> <span id="modal_status"></span></p>
-      <p><strong>Historic:</strong> <span id="modal_historic"></span></p>
-      <p><strong>EOL Goal:</strong> <span id="modal_eol_goal"></span></p>
-      <p><strong>Type:</strong> <span id="modal_type"></span></p>
-      <p><strong>Photo:</strong> <span id="modal_photo"></span></p>
-      <p><strong>City:</strong> <span id="modal_city"></span></p>
-      <p><strong>Power Type:</strong> <span id="modal_power"></span></p>
-      <p><strong>Seat Capacity:</strong> <span id="modal_seat"></span></p>
-      <p><strong>Engine:</strong> <span id="modal_engine"></span></p>
-      <p><strong>Route:</strong> <span id="modal_route"></span></p>
-      <p><strong>Disability Compliance:</strong> <span id="modal_disability"></span></p>
-      <p><strong>Normal Driver:</strong> <span id="modal_driver"></span></p>
-      <p><strong>Servicing History:</strong></p>
-      <pre id="modal_service"></pre>
-      <p><strong>Damage History:</strong></p>
-      <pre id="modal_damage"></pre>
-      <p><strong>Maintenance History:</strong></p>
-      <pre id="modal_maintenance"></pre>
+  <!-- Tram Details Modal -->
+  <div id="tramModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="tramTitle">
+    <div class="modal-content" role="document">
+      <button class="close-btn" id="modalClose" aria-label="Close">×</button>
+      <h2 id="tramTitle">Tram Details</h2>
+      <div class="modal-body grid">
+        <p><strong>ID:</strong> <span id="modal_id"></span></p>
+        <p><strong>Name:</strong> <span id="modal_name"></span></p>
+        <p><strong>Start Year:</strong> <span id="modal_start_year"></span></p>
+        <p><strong>End Year:</strong> <span id="modal_end_year"></span></p>
+        <p><strong>Status:</strong> <span id="modal_status"></span></p>
+        <p><strong>Historic:</strong> <span id="modal_historic"></span></p>
+        <p><strong>EOL Goal:</strong> <span id="modal_eol_goal"></span></p>
+        <p><strong>Type:</strong> <span id="modal_type"></span></p>
+        <p><strong>Photo:</strong> <span id="modal_photo"></span></p>
+        <p><strong>City:</strong> <span id="modal_city"></span></p>
+        <p><strong>Power Type:</strong> <span id="modal_power"></span></p>
+        <p><strong>Seat Capacity:</strong> <span id="modal_seat"></span></p>
+        <p><strong>Engine:</strong> <span id="modal_engine"></span></p>
+        <p><strong>Route:</strong> <span id="modal_route"></span></p>
+        <p><strong>Disability Compliance:</strong> <span id="modal_disability"></span></p>
+        <p><strong>Normal Driver:</strong> <span id="modal_driver"></span></p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn is-active" data-tab="Normal_Driver">Driver</button>
+        <button class="tab-btn" data-tab="Maintenance_History">Maintenance</button>
+        <button class="tab-btn" data-tab="Damage_History">Damage</button>
+      </div>
+      <div id="historyContent" class="history"></div>
     </div>
   </div>
-</div>
 
-  <div id="historyPopup" class="modal" style="display: none;">
-  <h2 id="historyTitle">History Viewer</h2>
-  <div class="tab-container">
-    <button onclick="loadTab('Servicing_History')">Servicing</button>
-    <button onclick="loadTab('Damage_History')">Damage</button>
-    <button onclick="loadTab('Maintenance_History')">Maintenance</button>
-  </div>
-  <div id="historyContent"></div>
-</div>
-
-  
-  <script src="js/search_basic.js"></script>
+  <script src="js/search_basic.js" defer></script>
 </body>
 </html>

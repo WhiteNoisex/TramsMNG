@@ -92,7 +92,7 @@ if (isset($requestData['username']) && isset($requestData['password'])) {
 function authenticateUser($mysqli, $username, $passwordhashed,$password) {
     // Prepare the SQL statement with placeholders
     $sql = "SELECT * FROM users 
-        WHERE BINARY FirstName = ? 
+        WHERE CONCAT(FirstName, LastName) = ? 
         AND (BINARY password = ? OR (BINARY password = 'ChangeMe' AND BINARY ? =  'ChangeMe'));";
     
     // Prepare the statement
@@ -156,7 +156,7 @@ function SetLoginStatusExectute($mysqli, $username,$hashedpasscode ,$password ,$
     //echo json_encode(['username'=> $username] + ['password' => $password] + ['token' => $token]);
     $sqlLog = "UPDATE users 
     SET token = ?, loggedin = 1 
-    WHERE BINARY FirstName = ? 
+    WHERE BINARY CONCAT(FirstName, LastName) = ? 
     AND (BINARY Password = ? OR (BINARY Password = 'ChangeMe' AND ? = 'ChangeMe'))";
     
     // Prepare the statement

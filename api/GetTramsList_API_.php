@@ -44,7 +44,7 @@ if (isset($requestData['Username'])) {
         return;
     }
 
-    if($userUID !== 0)
+    if($userUID != 0)
     {
         $GUEST_MODE = false;
     }
@@ -158,7 +158,7 @@ function GetUserName($mysqliUsers,$UserUID){
 
 function GetTramsFromDatabase($mysqliDict, $lessDetail){
 
-    $sql = "SELECT * FROM trams_database ORDER BY Tram_Name";
+    $sql = "SELECT * FROM trams ORDER BY Tram_Name";
 
 
     $stmt = $mysqliDict->prepare($sql);
@@ -246,7 +246,7 @@ function CompareHashes($data1,$hash2){
 
 function authenticateUser($mysqliUsers, $username, $token) {
     // Prepare the SQL statement with placeholders
-    $sql = "SELECT * FROM users WHERE BINARY FirstName = ? AND BINARY token = ? AND loggedin = 1";
+    $sql = "SELECT * FROM users WHERE CONCAT(FirstName, LastName) = ? AND BINARY token = ? AND loggedin = 1";
     
     // Prepare the statement
     $stmt = $mysqliUsers->prepare($sql);
@@ -303,72 +303,9 @@ function authenticateUser($mysqliUsers, $username, $token) {
 
 
 
-function authenticateChat($mysqliDict, $chatID, $userUID) {
-    //SELECT * FROM @table WHERE 'Joe' IN ( SELECT value FROM OPENJSON(Col,'$.names'))  
-    // SELECT * FROM groupchat_dict WHERE ID = 4 AND JSON_CONTAINS(Members, '{"members": 546242}');
-
-
-    $sql = "SELECT * FROM groupchat_dict WHERE ID = ? AND JSON_CONTAINS(Members, ?)";
-    //$sql = "SELECT * FROM groupchat_dict WHERE ID = ? AND JSON_CONTAINS(Members,' {\"members\":' ?'}')";
-
-    $stmt = $mysqliDict->prepare($sql);
-
-    if (!$stmt) { error_log("Failed to prepare SQL statement: " . $mysqliDict->error); return false;}
-
-    //$jsonMember = json_encode(["members" => $userUID]);
-    $bindResult = $stmt->bind_param("ss", $chatID, $userUID);
-    
-    if (!$bindResult) {
-        // Log the error internally
-        error_log("Failed to bind parameters: " . $stmt->error);
-        $stmt->close();
-        return false; // Authentication failed
-    }
-    
-    
-    // Execute the statement
-    $executeResult = $stmt->execute();
-    
-    // Check if the execution was successful
-    if (!$executeResult) {
-        // Log the error internally
-        error_log("Failed to execute SQL statement: " . $stmt->error);
-        $stmt->close();
-        return false; // Authentication failed
-    }
-    
-    // Get the result
-    $result = $stmt->get_result();
-    // Check if there is any row returned
-    if ($result->num_rows > 0) {
-        // Fetch the row
-        $row = $result->fetch_assoc();
-        //logRequest($row);
-        // Close the statement
-        //error_log($row);
-        $EncriptionKey = $row['Encryption_Key'];
-        $stmt->close();
-
-        
-        global $ENCRKEY;
-        $ENCRKEY = $EncriptionKey;
-        //error_log($EncriptionKey);
-        // Authentication successful
-        return true;
-    } else {
-        // Close the statement
-        $stmt->close();
-        
-        // Authentication failed
-        return false;
-    }
-}
-
-
-
 function GetUserUID($mysqliUsers,$username){
     // Prepare the SQL statement with placeholders
-    $sql = "SELECT * FROM users WHERE FirstName = ?";
+    $sql = "SELECT * FROM users WHERE CONCAT(FirstName, LastName) = ?";
 
     // Prepare the statement
     $stmt = $mysqliUsers->prepare($sql);
@@ -425,63 +362,5 @@ function GetUserUID($mysqliUsers,$username){
 }
 
 
-
-function GetChatName($mysqliMsg,$chatID){
-    // Prepare the SQL statement with placeholders
-    $sql = "SELECT * FROM groupchat_dict WHERE ID = ?";
-
-    // Prepare the statement
-    $stmt = $mysqliMsg->prepare($sql);
-    
-    // Check if the statement preparation was successful
-    if (!$stmt) {
-        // Log the error internally
-        error_log("Failed to prepare SQL statement: " . $mysqliMsg->error);
-        return false; // Authentication failed
-    }
-    
-    // Bind parameters
-    $bindResult = $stmt->bind_param("i", $chatID);
-    
-    // Check if the parameter binding was successful
-    if (!$bindResult) {
-        // Log the error internally
-        error_log("Failed to bind parameters: " . $stmt->error);
-        $stmt->close();
-        return false; // Authentication failed
-    }
-    
-    // Execute the statement
-    $executeResult = $stmt->execute();
-    
-    // Check if the execution was successful
-    if (!$executeResult) {
-        // Log the error internally
-        error_log("Failed to execute SQL statement: " . $stmt->error);
-        $stmt->close();
-        return false; // Authentication failed
-    }
-    
-    // Get the result
-    $result = $stmt->get_result();
-    
-    // Check if there is any row returned
-    if ($result->num_rows > 0) {
-        // Fetch the row
-        $row = $result->fetch_assoc();
-        $groupchat_name = $row['GroupChat_Name'];
-        // Close the statement
-        $stmt->close();
-        
-        // Authentication successful
-        return $groupchat_name;
-    } else {
-        // Close the statement
-        $stmt->close();
-        
-        // Authentication failed
-        return false;
-    }
-}
 
 ?>
