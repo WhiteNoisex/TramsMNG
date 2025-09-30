@@ -34,7 +34,6 @@ textarea{min-height:120px}
         <option>Minor</option><option>Moderate</option><option>Severe</option>
       </select>
     </label>
-    <label>Photos (URLs for now) <input id="photos" placeholder="comma-separated URLs"/></label>
     <label>Description <textarea id="desc" placeholder="What happened?"></textarea></label>
     <button id="submit" class="btn">Submit Report</button>
     <div id="notice" class="notice" hidden></div>
@@ -48,16 +47,19 @@ document.getElementById("submit").onclick=async()=>{
   const Token=sessionStorage.getItem("token")||"";
   const Tram_ID=(document.getElementById("tramId").value||"").trim();
   const Severity=document.getElementById("severity").value;
-  const Photos=(document.getElementById("photos").value||"").split(",").map(s=>s.trim()).filter(Boolean);
   const Description=document.getElementById("desc").value.trim();
   if(!Token||Username==="Guest") return show("Please login first.",true);
   if(!Tram_ID||!Description) return show("Tram ID and description are required.",true);
-  try{
-    // POST /api/Driver_NewDamage.php
-    // const res=await fetch(`${masterServer}/api/Driver_NewDamage.php`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({Username,Token,Tram_ID,Severity,Photos,Description})});
-    // const j=await res.json(); if(!res.ok) throw new Error(j?.error||res.statusText);
-    show("Damage report submitted (demo).");
-  }catch(e){show("Failed: "+e.message,true);}
+
+    try {
+      const res = await fetch(`${masterServer}/api/SubmitDamage_API_.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Username: Username, Token: Token, TramName: Tram_ID, TramSev: Severity, TramRep: Description})
+      });
+
+    }
+  catch(e){show("Failed: "+e.message,true);}
 };
 function show(msg,err=false){notice.hidden=false; notice.textContent=msg; notice.style.color=err?"#ffd0d0":"#eaffff";}
 </script>

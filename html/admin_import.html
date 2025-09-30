@@ -3,15 +3,14 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Service Request — TRAMS DB</title>
+<title>Bulk Tram Upload — TRAMS DB</title>
 <style>
 :root{--bg:#0b1220;--panel:#0f172a;--ink:#e6f0ff;--muted:#9fb1c8;--brand:#22d3ee;--border:#22314d}
-*{box-sizing:border-box} body{margin:0;background:#0a1020;color:var(--ink);font:15px/1.55 system-ui}
-.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0f172a;border-bottom:1px solid var(--border)}
+*{box-sizing:border-box} 
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--border)}
 .wrap{max-width:900px;margin:20px auto;padding:0 16px}
-.form{background:#0f172a;border:1px solid var(--border);border-radius:14px;padding:16px;display:grid;gap:12px}
-.row{display:grid;gap:10px}
-@media(min-width:720px){.row{grid-template-columns:1fr 1fr}}
+.form{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;display:grid;gap:12px}
 label{font-weight:600;margin-bottom:4px;display:block}
 input,select,textarea{width:100%;border:1px solid var(--border);background:#0b1220;color:var(--ink);border-radius:10px;padding:10px}
 textarea{min-height:140px;resize:vertical}
@@ -25,57 +24,24 @@ textarea{min-height:140px;resize:vertical}
 <body>
 <header class="header">
   <a href="?A=logged.html">← Dashboard</a>
-  <strong>Service Request</strong>
+  <strong>Bulk Tram Upload</strong>
   <span id="who"></span>
 </header>
 
 <main class="wrap">
-  <form id="frm" class="form" autocomplete="off">
-    <div class="row">
-      <div>
-        <label for="tramId">Tram ID</label>
-        <input id="tramId" name="Tram_ID" required pattern="\\d{1,6}" placeholder="e.g. 001"/>
-      </div>
-      <div>
-        <label for="severity">Severity</label>
-        <select id="severity" name="Severity" required>
-          <option value="Low">Low</option>
-          <option value="Medium" selected>Medium</option>
-          <option value="High">High</option>
-          <option value="Critical">Critical</option>
-        </select>
-      </div>
+  <form id="uploadForm" class="form" autocomplete="off">
+    <div>
+      <label for="fileInput">Select Tram Data File</label>
+      <input id="fileInput" type="file" accept=".csv,.json,.xml" required/>
     </div>
 
     <div>
-      <label for="title">Title</label>
-      <input id="title" name="Title" required placeholder="Short summary"/>
+      <label for="description">Description (optional)</label>
+      <textarea id="description" name="Description" placeholder="Optional notes about this upload"></textarea>
     </div>
 
     <div>
-      <label for="desc">Description</label>
-      <textarea id="desc" name="Description" placeholder="Describe the issue, steps to reproduce, safety concerns…" required></textarea>
-    </div>
-
-    <div class="row">
-      <div>
-        <label for="category">Category</label>
-        <select id="category" name="Category">
-          <option>Electrical</option>
-          <option>Mechanical</option>
-          <option>Body</option>
-          <option>Interior</option>
-          <option>Other</option>
-        </select>
-      </div>
-      <div>
-        <label for="image">Photos (optional)</label>
-        <input id="image" type="file" accept="image/*" multiple/>
-      </div>
-    </div>
-
-    <div>
-      <button class="btn" type="submit">Submit Ticket</button>
+      <button class="btn" type="submit">Upload File</button>
       <button class="btn" type="button" id="previewBtn" style="background:#17223b;color:#d7e5ff;border:1px solid var(--border)">Preview Payload</button>
     </div>
 
@@ -90,49 +56,63 @@ const username = sessionStorage.getItem("username") || "Guest";
 const token = sessionStorage.getItem("token") || "";
 document.getElementById("who").textContent = username;
 
-const frm = document.getElementById("frm");
+const form = document.getElementById("uploadForm");
 const msg = document.getElementById("msg");
 const preview = document.getElementById("preview");
 const previewBtn = document.getElementById("previewBtn");
 
-previewBtn.addEventListener("click", async ()=>{
+previewBtn.addEventListener("click", async () => {
   const payload = await buildPayload(false);
   preview.hidden = false;
   preview.textContent = JSON.stringify(payload, null, 2);
 });
 
-frm.addEventListener("submit", async (e)=>{
-  e.preventDefault(); hide(); 
-  try{
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  hideMsg();
+  try {
     const payload = await buildPayload(true);
-    const res = await fetch(`${masterServer}/api/Service_Create.php`,{
-      method:"POST", body: payload // multipart if files attached
+    const res = await fetch(`${masterServer}/api/Tram_Upload.php`, {
+      method: "POST",
+      body: payload
     });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const j = await res.json();
-    show("Ticket submitted.", false);
-  }catch(err){ show(`Failed: ${err.message}`, true); }
+    showMsg(`Uploaded ${j.inserted} trains successfully.`, false);
+  } catch(err) {
+    showMsg(`Failed: ${err.message}`, true);
+  }
 });
 
-async function buildPayload(asMultipart){
-  const fd = new FormData(frm);
+async function buildPayload(asMultipart) {
+  const fd = new FormData();
+  const fileInput = document.getElementById("fileInput");
+  const desc = document.getElementById("description").value;
+
+  if(fileInput.files.length === 0) throw new Error("No file selected");
+  fd.append("File", fileInput.files[0]);
   fd.append("Username", username);
   fd.append("Token", token);
-  // files are already in fd if picked
+  fd.append("Description", desc);
+
   if(asMultipart) return fd;
 
-  // For preview as JSON without files:
-  const plain = {};
-  for (const [k,v] of fd.entries()){
-    if (k === "image") continue; // skip files in JSON preview
-    plain[k] = v;
-  }
-  plain.Username = username; plain.Token = token;
-  return plain;
+  return {
+    Username: username,
+    Token: token,
+    Description: desc,
+    FileName: fileInput.files[0].name,
+    FileType: fileInput.files[0].type
+  };
 }
 
-function show(t, bad){ msg.hidden=false; msg.textContent=t; msg.className="notice "+(bad?"err":"ok"); }
-function hide(){ msg.hidden=true; }
+function showMsg(text, isError) {
+  msg.hidden = false;
+  msg.textContent = text;
+  msg.className = "notice " + (isError ? "err" : "ok");
+}
+
+function hideMsg() { msg.hidden = true; }
 </script>
 </body>
 </html>

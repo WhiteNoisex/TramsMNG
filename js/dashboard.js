@@ -24,7 +24,6 @@ userNameEl.textContent = username;
 // --- Bootstrap: load role, then render sections
 async function bootstrap() {
   try {
-    const role = await getUserRole();
     userRoleEl.textContent = role;
     showSections(visibleRolesFor(role));
   } catch (e) {
@@ -60,27 +59,6 @@ function showNotice(msg, isError=false) {
   notice.style.color = isError ? "#ffd0d0" : "#eaffff";
 }
 function hideNotice(){ if (notice) notice.hidden = true; }
-
-// --- Role fetcher (adjust endpoint to your API) ---
-async function getUserRole() {
-  // Prefer API; fallback to session
-  try {
-    const res = await fetch(`${masterServer}/api/GetUserInfo.php`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ Username: username, Token: token })
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    // Expecting something like { role: "Admin" } or { Perms: "Driver" }
-    const role = data.role || data.Perms || roleFromSession || "Public";
-    // Persist for subsequent pages
-    sessionStorage.setItem("role", role);
-    return role;
-  } catch {
-    return roleFromSession || "Public";
-  }
-}
 
 // --- Click actions (wire up minimal handlers/placeholders) ---
 document.addEventListener("click", (e) => {

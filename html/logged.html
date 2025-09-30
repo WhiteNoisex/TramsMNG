@@ -33,17 +33,6 @@
     <!-- Driver section -->
     <section class="grid" data-role="Driver">
       <h2 class="section-title">Driver Tools</h2>
-
-      <article class="card">
-        <h3>My Assigned Trams</h3>
-        <p>See your current tram roster and shift history.</p>
-        <div class="actions">
-          <a class="btn" href="?A=search_basic.html">Open List</a>
-          <button class="btn ghost" data-action="driver.loadAssigned">Load Assigned</button>
-        </div>
-        <div class="mini" id="driverAssigned"></div>
-      </article>
-
       <article class="card">
         <h3>Report Damage</h3>
         <p>Create a new damage entry with photos & notes.</p>
@@ -51,29 +40,11 @@
           <button class="btn" data-action="driver.newDamage">New Report</button>
         </div>
       </article>
-
-      <article class="card">
-        <h3>Request Servicing</h3>
-        <p>Raise a servicing ticket for mechanical/electrical issues.</p>
-        <div class="actions">
-          <button class="btn" data-action="driver.newService">New Service Ticket</button>
-        </div>
-      </article>
     </section>
 
     <!-- Maintenance section -->
     <section class="grid" data-role="Maintenance">
       <h2 class="section-title">Maintenance Tools</h2>
-
-      <article class="card">
-        <h3>Work Queue</h3>
-        <p>Open tasks, prioritised by severity and SLA.</p>
-        <div class="actions">
-          <button class="btn" data-action="maint.loadQueue">View Queue</button>
-        </div>
-        <div class="mini" id="maintQueue"></div>
-      </article>
-
       <article class="card">
         <h3>Record Maintenance</h3>
         <p>Post a maintenance record to a tram’s history.</p>
@@ -102,27 +73,6 @@
           <a class="btn" href="?A=search_basic.html">Open Registry</a>
           <button class="btn ghost" data-action="admin.import">Import</button>
           <button class="btn ghost" data-action="admin.export">Export</button>
-        </div>
-      </article>
-
-      <article class="card">
-        <h3>Audit & Logs</h3>
-        <p>Review actions, damage/maintenance deltas, auth events.</p>
-        <div class="actions">
-          <button class="btn" data-action="admin.logs">Open Logs</button>
-        </div>
-      </article>
-    </section>
-
-    <!-- Public fallback -->
-    <section class="grid" data-role="Public">
-      <h2 class="section-title">Public</h2>
-      <article class="card">
-        <h3>Browse</h3>
-        <p>Limited view. Log in for full features.</p>
-        <div class="actions">
-          <a class="btn" href="?A=search_basic.html">Browse</a>
-          <a class="btn ghost" href="?A=login.html">Login</a>
         </div>
       </article>
     </section>

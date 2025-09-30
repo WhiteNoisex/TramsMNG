@@ -36,7 +36,6 @@ textarea{min-height:110px}
     <label>Details <textarea id="details"></textarea></label>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button id="save" class="btn">Save Record</button>
-      <button id="load" class="btn">Load Recent</button>
     </div>
     <div id="notice" class="notice" hidden></div>
     <table class="table" id="tbl" hidden>
@@ -60,19 +59,12 @@ document.getElementById("save").onclick=async()=>{
   const Details=document.getElementById("details").value.trim();
   if(!Tram_ID||!Task) return show("Tram ID and task are required.",true);
   try{
-    // const res=await fetch(`${masterServer}/api/Maint_AddRecord.php`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({Username,Token,Tram_ID,Date:DateStr,Task,Details})});
-    // const j=await res.json(); if(!res.ok) throw new Error(j?.error||res.statusText);
-    show("Record saved (demo).");
+    const res = await fetch(`${masterServer}/api/SubmitService_API_.php`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ Username: Username, Token: Token, TramName: Tram_ID, Overview: Task, TramRep: Details, Date: DateStr})
+          });
   }catch(e){show("Failed: "+e.message,true);}
-};
-document.getElementById("load").onclick=async()=>{
-  tbody.innerHTML=""; tbl.hidden=false;
-  try{
-    // const res=await fetch(`${masterServer}/api/Maint_GetRecent.php`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({Token:sessionStorage.getItem('token')})});
-    // const rows=await res.json();
-    const rows=[{date:'2024-06-01',task:'HV overhaul',details:'Phase 2 done'},{date:'2024-09-12',task:'Door ECU firmware',details:'R15'}];
-    rows.forEach(r=>{const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.date||''}</td><td>${r.task||''}</td><td>${r.details||''}</td>`; tbody.appendChild(tr);});
-  }catch(e){show("Load failed: "+e.message,true);}
 };
 </script>
 </body>
