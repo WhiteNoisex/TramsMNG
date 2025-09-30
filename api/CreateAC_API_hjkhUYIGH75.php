@@ -44,40 +44,42 @@ $requestData = array_map(function($value) {
 }, $requestData);
 
 // Check if the required POST parameters are set
-if (isset($requestData['username']) && isset($requestData['Token']) && isset($requestData['NewFirstName'])  && isset($requestData['NewLastName']) && isset($requestData["Perms"])) {
+if (isset($requestData['Username']) && isset($requestData['Token']) && isset($requestData['FirstName'])  && isset($requestData['LastName']) && isset($requestData["Perms"]) && isset($requestData["Password"])) {
     // Extract username and password from POST parameters
-    $username = $requestData['username'];
-    $newFirstName = $requestData['NewFirstNameName'];
-    $newLastName = $requestData['NewLastNameName'];
+    $username = $requestData['Username'];
+    $newFirstName = $requestData['FirstName'];
+    $newLastName = $requestData['LastName'];
     $token = $requestData['Token'];
     $perms = $requestData['Perms'];
+    $newPassword = $requestData["Password"];
     
     $userUID = GetUserUID($conn,$username);
     $timestamp = date("Y-m-d H:i:s");
 
-    if (strlen($newFirstName) > 10) {
-        echo json_encode(['Error' => 'Invalid Username Length']);
-        http_response_code(400); // Bad Request
+    if (strlen($newFirstName) > 30) {
+        echo json_encode(['Error' => 'First name is too long']);
+        http_response_code(400);
         exit();
     }
 
     if (strlen($newFirstName) < 1) {
-        echo json_encode(['Error' => 'User Length Length']);
-        http_response_code(400); // Bad Request
+        echo json_encode(['Error' => 'First name is too short']);
+        http_response_code(400);
         exit();
     }
 
-    if (strlen($newLastName) > 10) {
-        echo json_encode(['Error' => 'Invalid Username Length']);
-        http_response_code(400); // Bad Request
+    if (strlen($newLastName) > 30) {
+        echo json_encode(['Error' => 'Last name is too long']);
+        http_response_code(400);
         exit();
     }
 
     if (strlen($newLastName) < 1) {
-        echo json_encode(['Error' => 'User Length Length']);
-        http_response_code(400); // Bad Request
+        echo json_encode(['Error' => 'Last name is too short']);
+        http_response_code(400);
         exit();
     }
+
 
     if($userUID === false){
         echo json_encode(['Error' => 'Invalid UserUID']);
@@ -85,11 +87,12 @@ if (isset($requestData['username']) && isset($requestData['Token']) && isset($re
         exit();
     }
 
-    if($perms !== 'Admin' || $perms !== 'Mant' || $perms !== 'Normal' ){
+    if ($perms !== 'Admin' && $perms !== 'Mant' && $perms !== 'Normal') {
         echo json_encode(['Error' => 'Invalid Perms']);
-        http_response_code(400); // Bad Request
+        http_response_code(400);
         exit();
     }
+
 
     // Check if the credentials are correct (replace with your authentication logic)
     if (authenticateUser($conn,$userUID,$token)) {
@@ -119,7 +122,7 @@ if (isset($requestData['username']) && isset($requestData['Token']) && isset($re
 
 
 
-        if(CreateNewAccount($conn,$newUserUID,$newFirstName, $newLastName, $perms)){
+        if(CreateNewAccount($conn,$newUserUID,$newFirstName, $newLastName, $perms, $newPassword)){
             http_response_code(200); // Unauthorized
             echo json_encode(['message' => 'User Created']);
         }
@@ -136,7 +139,7 @@ if (isset($requestData['username']) && isset($requestData['Token']) && isset($re
 } else {
     // Required POST parameters are missing
     http_response_code(400); // Bad Request
-    echo json_encode(['error' => 'Bad Request']);
+    echo json_encode(['error' => 'Bad Request1']);
 }
 
 // Might Be vaurablity as the chatid isnt sanitised and is dirrectly from user however it has to exist to pass so idk
@@ -316,9 +319,9 @@ function CheckUserUIDAllreadyExists($mysqliUsers, $newuserUID) {
 
 
 
-function CreateNewAccount($mysqliUsers,$NewUserUID,$newFirstName, $newLastName, $newPerms){
+function CreateNewAccount($mysqliUsers,$NewUserUID,$newFirstName, $newLastName, $newPerms, $newPassword){
     // Prepare the SQL statement with placeholders
-    $sql = "INSERT INTO `users` (`id`, `UserUID`, `FirstName`,`LastName`,`Perms`, `Password`, `token`, `loggedin`, `last_login`, `Fired`) VALUES (NULL, ?, ?, ?, ?,'ChangeMe', '0', '0', CURRENT_TIMESTAMP, `0`);";
+    $sql = "INSERT INTO `users` (`id`, `UserUID`, `FirstName`,`LastName`,`Perms`, `Password`, `token`, `loggedin`, `last_login`, `Fired`) VALUES (NULL, ?, ?, ?, ?, ?, '0', '0', CURRENT_TIMESTAMP, 0);";
 
     // Prepare the statement
     $stmt = $mysqliUsers->prepare($sql);
@@ -331,7 +334,7 @@ function CreateNewAccount($mysqliUsers,$NewUserUID,$newFirstName, $newLastName, 
     }
     
     // Bind parameters
-    $bindResult = $stmt->bind_param("ssss", $NewUserUID,$newFirstName, $newLastName, $newPerms);
+    $bindResult = $stmt->bind_param("sssss", $NewUserUID,$newFirstName, $newLastName, $newPerms, hash('sha256', $newPassword));
     
     // Check if the parameter binding was successful
     if (!$bindResult) {

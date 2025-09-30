@@ -1,5 +1,5 @@
 // --- Auth & API base ---
-const masterServer = "http://localhost/tramsMNG";
+const masterServer = "https://web.interfacetools.com/TramsMNG";
 const username = sessionStorage.getItem("username") || "Guest";
 const token = sessionStorage.getItem("token") || "";
 const roleFromSession = sessionStorage.getItem("role") || ""; // optional

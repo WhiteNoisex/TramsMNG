@@ -2,7 +2,7 @@
 let username = sessionStorage.getItem("username") || "GuestGuest";
 let token = sessionStorage.getItem("token") || "";
 let guest = (username === "GuestGuest");
-const masterServer = "http://localhost/tramsMNG";
+const masterServer = "https://web.interfacetools.com/TramsMNG";
 
 // --- State ---
 let trams = [];

@@ -1,6 +1,6 @@
 const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
-var masterServer = "http://localhost/tramsMNG"
+const masterServer = "https://web.interfacetools.com/TramsMNG";
 
 loginForm.addEventListener('submit', function(e) {
   e.preventDefault();
@@ -10,6 +10,30 @@ loginForm.addEventListener('submit', function(e) {
   authenticateUser(username,password);
 });
 
+
+String.prototype.hashCode = function() {
+    var hash = 0, i, chr;
+    if (this.length === 0) return hash;
+    for (i = 0; i < this.length; i++) {
+        chr   = this.charCodeAt(i);
+        hash  = ((hash << 5) - hash) + chr;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};
+
+
+
+async function hash(string) {
+    const utf8 = new TextEncoder().encode(string);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray
+      .map((bytes) => bytes.toString(16).padStart(2, '0'))
+      .join('');
+    return hashHex;
+  }
+  
 async function authenticateUser(Username, Password) {
     if(Password !== "ChangeMe"){
         Password = await hash(Password);
